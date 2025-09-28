@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2014-2024 Suwasaki Ryu
+// Copyright (c) 2014-2025 Suwasaki Ryu
 //----------------------------------------------------------------------------
 // foo_input_wave_loop (foobar2000 component)
 // foo_input_wave_loop.h
@@ -7,13 +7,16 @@
 // References:
 //   * input_raw.cpp (foobar2000 SDK sample)
 //   * Multimedia Programming Interface and Data Specifications 1.0
-//       http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/riffmci.pdf
+//       https://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/riffmci.pdf
 //   * Microsoft Multimedia Standards Update, New Multimedia Data Types and Data Techniques, Revision: 3.0
-//       http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/RIFFNEW.pdf
+//       https://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/RIFFNEW.pdf
+//   * The ID3v2 documents
+//       https://id3.org/Developer%20Information
 //
 // Changes:
-//   1.1 (1 May 2024) : Support x64 platform, based on foobar2000 SDK 2023-09-23
-//   1.0 (2 May 2014) : First release, based on foobar2000 SDK 2011-03-11
+//   1.2 (28 Sep 2025) : Fixed ID3 tag reading function
+//   1.1 ( 1 May 2024) : Support x64 platform, based on foobar2000 SDK 2023-09-23
+//   1.0 ( 2 May 2014) : First release, based on foobar2000 SDK 2011-03-11
 //
 //----------------------------------------------------------------------------
 
@@ -124,28 +127,28 @@ struct WaveSampleLoop
 	t_uint32 playCount;                 // Specifies the number of times to play the loop (0 : infinite)
 };
 
-// ID3v2 (ID3v2.3 / ID3v2.4) header
+// ID3v2 (ID3v2.3.0 / ID3v2.4.0) header
 struct ID3v2Header
 {
 	t_uint8  ID[3];                     // ID3v2/file identifier ("ID3")
-	t_uint8  version[2];                // ID3v2 version ($03 00 : ID3v2.3, $04 00 : ID3v2.4)
-	t_uint8  flags;                     // ID3v2 flags (%abc00000 : ID3v2.3, %abcd0000 : ID3v2.4)
+	t_uint8  version[2];                // ID3v2 version ($03 00 : ID3v2.3.0, $04 00 : ID3v2.4.0)
+	t_uint8  flags;                     // ID3v2 flags (%abc00000 : ID3v2.3.0, %abcd0000 : ID3v2.4.0)
 	t_uint8  size[4];                   // ID3v2 size (4 * %0xxxxxxx, not include footer size)
 };
 
-// ID3v2 (ID3v2.3 / ID3v2.4) extended header
+// ID3v2 (ID3v2.3.0 / ID3v2.4.0) extended header
 struct ID3v2ExtendedHeader
 {
-	t_uint8  size[4];                   // Extended header size (4 * %0xxxxxxx)
+	t_uint8  size[4];                   // Extended header size ($xx xx xx xx : ID3v2.3.0, 4 * %0xxxxxxx : ID3v2.4.0)
 	t_uint8  flagsSize;                 // Number of flag bytes
 	t_uint8  flags;                     // Extended Flags
 };
 
-// ID3v2 (ID3v2.3 / ID3v2.4) frame
+// ID3v2 (ID3v2.3.0 / ID3v2.4.0) frame
 struct ID3v2Frame
 {
 	t_uint8  ID[4];                     // Frame ID
-	t_uint8  size[4];                   // Size
+	t_uint8  size[4];                   // Size ($xx xx xx xx : ID3v2.3.0, 4 * %0xxxxxxx : ID3v2.4.0)
 	t_uint8  flags[2];                  // Flags
 };
 

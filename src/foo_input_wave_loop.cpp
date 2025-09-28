@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2014-2024 Suwasaki Ryu
+// Copyright (c) 2014-2025 Suwasaki Ryu
 //----------------------------------------------------------------------------
 // foo_input_wave_loop (foobar2000 component)
 // foo_input_wave_loop.cpp
@@ -7,13 +7,16 @@
 // References:
 //   * input_raw.cpp (foobar2000 SDK sample)
 //   * Multimedia Programming Interface and Data Specifications 1.0
-//       http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/riffmci.pdf
+//       https://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/riffmci.pdf
 //   * Microsoft Multimedia Standards Update, New Multimedia Data Types and Data Techniques, Revision: 3.0
-//       http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/RIFFNEW.pdf
+//       https://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/RIFFNEW.pdf
+//   * The ID3v2 documents
+//       https://id3.org/Developer%20Information
 //
 // Changes:
-//   1.1 (1 May 2024) : Support x64 platform, based on foobar2000 SDK 2023-09-23
-//   1.0 (2 May 2014) : First release, based on foobar2000 SDK 2011-03-11
+//   1.2 (28 Sep 2025) : Fixed ID3 tag reading function
+//   1.1 ( 1 May 2024) : Support x64 platform, based on foobar2000 SDK 2023-09-23
+//   1.0 ( 2 May 2014) : First release, based on foobar2000 SDK 2011-03-11
 //
 //----------------------------------------------------------------------------
 
@@ -464,6 +467,7 @@ private:
 
 		// ID3v2 header
 		const ID3v2Header* pHeader = (const ID3v2Header*)pData;
+		t_uint16 version = 0;
 
 		if (!((pHeader->ID[0] == 'I') && (pHeader->ID[1] == 'D') && (pHeader->ID[2] == '3')))
 		{
@@ -471,17 +475,27 @@ private:
 			return false;
 		}
 
-		if (!(((pHeader->version[0] == 3) || (pHeader->version[0] == 4)) && (pHeader->version[1] == 0)))
+		if ((pHeader->version[0] == 3) && (pHeader->version[1] == 0))
+		{
+			// ID3v2.3.0
+			version = 0x0300;
+		}
+		else if ((pHeader->version[0] == 4) && (pHeader->version[1] == 0))
+		{
+			// ID3v2.4.0
+			version = 0x0400;
+		}
+		else
 		{
 			console::info("foo_input_wave_loop : unsupported ID3 Header version");
 			return false;
 		}
 
 		bool     extendedHeader = (pHeader->flags & 0x40) ? true : false;
-		t_uint32 id3DataSize    =   ((pHeader->size[0] & 0x7F) << 21)
-		                          + ((pHeader->size[1] & 0x7F) << 14)
-		                          + ((pHeader->size[2] & 0x7F) << 7)
-		                          +  (pHeader->size[3] & 0x7F);
+		t_uint32 id3DataSize    =   ( (pHeader->size[0] & 0x7F) << 21)
+		                          + ( (pHeader->size[1] & 0x7F) << 14)
+		                          + ( (pHeader->size[2] & 0x7F) << 7)
+		                          +   (pHeader->size[3] & 0x7F);
 
 
 		// ID3v2 extended header
@@ -490,10 +504,15 @@ private:
 		{
 			const ID3v2ExtendedHeader* pExHeader = (const ID3v2ExtendedHeader*)pData;
 
-			t_uint32 extendedHeaderSize =   ((pExHeader->size[0] & 0x7F) << 21)
-			                              + ((pExHeader->size[1] & 0x7F) << 14)
-			                              + ((pExHeader->size[2] & 0x7F) << 7)
-			                              +  (pExHeader->size[3] & 0x7F);
+			t_uint32 extendedHeaderSize = (version >= 0x0400) ? (  ( (pExHeader->size[0] & 0x7F) << 21)
+			                                                     + ( (pExHeader->size[1] & 0x7F) << 14)
+			                                                     + ( (pExHeader->size[2] & 0x7F) << 7)
+			                                                     +   (pExHeader->size[3] & 0x7F) )
+			                                                  : (  (  pExHeader->size[0]         << 24)
+			                                                     + (  pExHeader->size[1]         << 16)
+			                                                     + (  pExHeader->size[2]         << 8)
+			                                                     +    pExHeader->size[3]
+			                                                     + 4);
 
 			pData       += extendedHeaderSize;
 			id3DataSize -= extendedHeaderSize;
@@ -513,9 +532,16 @@ private:
 				break;
 			}
 
-			t_uint32 frameSize = (pFrame->size[0] << 24) + (pFrame->size[1] << 16) + (pFrame->size[2] << 8) + pFrame->size[3];
+			t_uint32 frameSize = (version >= 0x0400) ? (  ( (pFrame->size[0] & 0x7F) << 21)
+				                                        + ( (pFrame->size[1] & 0x7F) << 14)
+				                                        + ( (pFrame->size[2] & 0x7F) << 7)
+				                                        +   (pFrame->size[3] & 0x7F) )
+				                                     : (  (  pFrame->size[0]         << 24)
+														+ (  pFrame->size[1]         << 16)
+														+ (  pFrame->size[2]         << 8)
+														+    pFrame->size[3] );
 
-			if ((pFrame->ID[0] == 'T') || (pFrame->ID[1] == 'X') || (pFrame->ID[2] == 'X') || (pFrame->ID[3] == 'X'))
+			if ((pFrame->ID[0] == 'T') && (pFrame->ID[1] == 'X') && (pFrame->ID[2] == 'X') && (pFrame->ID[3] == 'X'))
 			{
 				// #TXXX User defined text information frame
 				const t_uint8* pTXXX   = (const t_uint8*)&pData[sizeof(ID3v2Frame)];
@@ -529,21 +555,9 @@ private:
 				t_uint8  textEnc = pTXXX[0];
 				t_uint32 pos = 1, i;
 
-				// Text encoding
-				switch(textEnc)
+				// Text encoding support only ISO-8859-1
+				if(textEnc == 0)
 				{
-				case 3:
-					// UTF-8 (encoded Unicode)
-
-					// UTF-8 BOM check
-					if ((pTXXX[pos] == 0xEF) && (pTXXX[pos + 1] == 0xBB) && (pTXXX[pos + 2] == 0xBF))
-					{
-						pos += 3;
-					}
-					// no break
-
-				case 0:
-					// ISO-8859-1
 					for (i = 0; (i < frameSize) && (pos < frameSize); i++)
 					{
 						tagName[i] = pTXXX[pos];
@@ -569,116 +583,6 @@ private:
 					tagValue[i] = '\0';
 
 					tagRead = true;
-					break;
-
-				case 1:
-					// UTF-16 (encoded Unicode with BOM)
-
-					// UTF-16 BOM check
-					if (pos < frameSize - 1)
-					{
-						bool bigEndian = false;
-
-						if ((pTXXX[pos] == 0xFF) && (pTXXX[pos + 1] == 0xFE))
-						{
-							// LE (little endian)
-							pos += 2;
-						}
-						else if ((pTXXX[pos] == 0xFE) && (pTXXX[pos + 1] == 0xFF))
-						{
-							// BE (big endian)
-							bigEndian = true;
-							pos += 3;
-						}
-
-						for (i = 0; (i < frameSize) && (pos < frameSize); i++)
-						{
-							tagName[i] = pTXXX[pos];
-							pos += 2;
-
-							if (tagName[i] == '\0')
-							{
-								if (bigEndian)
-								{
-									pos--;
-								}
-								break;
-							}
-						}
-						tagName[i] = '\0';
-					}
-
-					if (pos < frameSize - 1)
-					{
-						bool bigEndian = false;
-
-						if ((pTXXX[pos] == 0xFF) && (pTXXX[pos + 1] == 0xFE))
-						{
-							// LE (little endian)
-							pos += 2;
-						}
-						else if ((pTXXX[pos] == 0xFE) && (pTXXX[pos + 1] == 0xFF))
-						{
-							// BE (big endian)
-							bigEndian = true;
-							pos += 3;
-						}
-
-						for (i = 0; (i < frameSize) && (pos < frameSize); i++)
-						{
-							tagValue[i] = pTXXX[pos];
-							pos += 2;
-
-							if (tagValue[i] == '\0')
-							{
-								if (bigEndian)
-								{
-									pos--;
-								}
-								break;
-							}
-						}
-						tagValue[i] = '\0';
-					}
-
-					tagRead = true;
-					break;
-
-				case 2:
-					// UTF-16BE (encoded Unicode without BOM)
-					pos += 1;
-
-					for (i = 0; (i < frameSize) && (pos < frameSize); i++)
-					{
-						tagName[i] = pTXXX[pos];
-						pos += 2;
-
-						if (tagName[i] == '\0')
-						{
-							pos--;
-							break;
-						}
-					}
-					tagName[i] = '\0';
-
-					for (i = 0; (i < frameSize) && (pos < frameSize); i++)
-					{
-						tagValue[i] = pTXXX[pos];
-						pos += 2;
-
-						if (tagValue[i] == '\0')
-						{
-							pos--;
-							break;
-						}
-					}
-					tagValue[i] = '\0';
-
-					tagRead = true;
-					break;
-
-				default:
-					break;
 				}
 
 				if (tagRead)
@@ -722,11 +626,11 @@ static input_singletrack_factory_t<input_wave_loop> g_input_wave_loop_factory;
 // As for 1.1, the version numbers are used by the component update finder to find updates; for that to work, you must have ONLY ONE declaration per DLL. If there are multiple declarations, the component is assumed to be outdated and a version number of "0" is assumed, to overwrite the component with whatever is currently on the site assuming that it comes with proper version numbers.
 DECLARE_COMPONENT_VERSION(
 	"Wave Loop",
-	"1.1",
+	"1.2",
 	"foo_input_wave_loop (foobar2000 component)\n"
 	"Support WAV file (*.wavloop) with loop point\n"
 	"\n"
-	"Copyright (c) 2014-2024 Suwasaki Ryu\n"
+	"Copyright (c) 2014-2025 Suwasaki Ryu\n"
 	"Distributed under MIT License\n"
 	"https://github.com/suwasakix/foo_input_wave_loop"
 );

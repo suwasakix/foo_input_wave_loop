@@ -390,8 +390,8 @@ SDK-2023-09-23\foobar2000\foo_input_wave_loop のフォルダに以下のファ�
 
 ```
 foo_input_wave_loop.fb2k-component
-└── foo_input_wave_loop.dll (foo_input_wave_loop\Release\foo_input_wave_loop.dll)
-     └── x64
-          └── foo_input_wave_loop.dll (foo_input_wave_loop\x64\Release\foo_input_wave_loop.dll)
+├── foo_input_wave_loop.dll (foo_input_wave_loop\Release\foo_input_wave_loop.dll)
+└── x64
+     └──  foo_input_wave_loop.dll (foo_input_wave_loop\x64\Release\foo_input_wave_loop.dll)
 ```
 

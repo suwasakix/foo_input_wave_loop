@@ -44,7 +44,7 @@ To avoid the conflict with foobar2000 standard input component, this component i
 
 ## 動作環境 - Operating environment
 
-本ソフトウェア (v1.1) は、以下の環境で動作することを確認しています。
+本ソフトウェア (v1.2) は、以下の環境で動作することを確認しています。
 
 - foobar2000 v2.1.4 (x64) on Windows 11
 - foobar2000 v2.1.4 (x86) on Windows 11
@@ -183,6 +183,10 @@ FF7 (FF7R) のミッドガルで24時間戦い続けたい人のための使用�
    Audacity を起動したら、メニューの「編集(E)」→「設定(F)...」を選択し、「品質」カテゴリーの「高音質変換 - ディザリング(h)」を「無し」に設定します。  
 
    <a href="./docs/images/audacity_preferences.gif"><img src="./docs/images/audacity_preferences.gif" width="320" height="223"></a>  
+
+   「オーディオ設定」→「オーディオ環境設定(P)...」を選択し、プロジェクトのサンプリング周波数をリッピングした WAV ファイルに合わせます。デフォルトでは 44100 Hz になっているので CD からリッピングした WAV ファイルの場合はそのままで問題ありませんが、そうでない場合は WAV ファイルのサンプリング周波数を確認して設定を行ってください。周波数の値が一致していないと、「時間ツールバー」のサンプル番号を正しく表示することができません。
+
+   <a href="./docs/images/audacity_audio_settings.gif"><img src="./docs/images/audacity_audio_settings.gif" width="320" height="264"></a>  
 
    リッピングした WAV ファイルをオープンして、音楽のループポイントになっている箇所を探します。Audacity を２つ起動してそれぞれで WAV ファイルを開いて、ループの開始・終了になりそうな位置を、波形を見比べながら探すと作業しやすいと思います。  
 
